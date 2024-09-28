@@ -10,6 +10,16 @@ MailboxPermissionsRevoker.ps1 is a PowerShell script for administrators to find 
 - Provides the option to remove permissions selectively or all at once.
 - Allows importing cached permissions from a CSV file for faster operation.
 
+**Caching Permissions:**
+
+To cache mailbox permissions for faster processing, you can run the AdminDroid "GetMailboxPermission.ps1" (version 3.0) script in the same directory as this script. This will generate a CSV file containing the permissions that can be used by MailboxPermissionsRevoker.ps1.
+
+You can find the AdminDroid script here:
+https://github.com/admindroid-community/powershell-scripts/blob/master/Office%20365%20Mailbox%20Permissions%20Report/GetMailboxPermission.ps1
+
+Note: This script is created and maintained by AdminDroid. Please refer to their repository for updates and support.
+
+
 ## Disclaimer
 Please note that while I have taken care to ensure the script works correctly, I am not responsible for any damage or issues that may arise from its use. Use this script at your own risk.
 
