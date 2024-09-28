@@ -17,7 +17,6 @@ https://github.com/admindroid-community/powershell-scripts/blob/master/Office%20
 
 #>
 
-
 Param
 (
     [Parameter(Mandatory = $false)]
@@ -26,18 +25,11 @@ Param
 
 $global:RemoveAll = $false
 
-# Get the path where the script is running
 $scriptDirectory = $PSScriptRoot
-
-# Get all CSV files in the script directory
 $csvFiles = Get-ChildItem -Path $scriptDirectory -Filter *.csv
 
-# Check if there are multiple CSV files
 if ($csvFiles.Count -gt 1) {
-    # Sort files by last write time (oldest first)
     $sortedFiles = $csvFiles | Sort-Object LastWriteTime
-
-    # Rename all but the latest CSV file
     for ($i = 0; $i -lt $sortedFiles.Count - 1; $i++) {
         $oldFile = $sortedFiles[$i]
         $newName = "$($oldFile.FullName).old"
@@ -45,18 +37,14 @@ if ($csvFiles.Count -gt 1) {
             Rename-Item -Path $oldFile.FullName -NewName $newName
         }
     }
-
-    # The latest CSV file will be the last one in the sorted list
     $latestCSV = $sortedFiles[-1].FullName
 } elseif ($csvFiles.Count -eq 1) {
-    # If only one CSV file is present, use it
     $latestCSV = $csvFiles[0].FullName
 } else {
     Write-Host "No CSV files found in the script directory. Exiting."
     Exit
 }
 
-# Use the latest CSV file for importing
 $csvPath = $latestCSV
 
 function Connect_Exo {
@@ -66,23 +54,17 @@ function Connect_Exo {
         Import-Module ExchangeOnline -ErrorAction SilentlyContinue -Force
         Connect-ExchangeOnline
         
-        # Retrieve the first 10 mailboxes and get their email domains
         $mailboxes = Get-Mailbox -ResultSize 10
         if ($mailboxes.count -gt 0) {
             $domains = $mailboxes | ForEach-Object {
                 ($_.PrimarySmtpAddress -split '@')[1]
             }
-
-            # Find the domain that appears the most
             $mostCommonDomain = $domains | Group-Object | Sort-Object Count -Descending | Select-Object -First 1 -ExpandProperty Name
-            
-            # Display the domain in yellow
             Write-Host ""
             Write-Host "Connected to Office 365 Tenant: $mostCommonDomain" -ForegroundColor Green
         } else {
             Write-Host "No mailboxes found to determine the domain." -ForegroundColor Yellow
         }
-
         Write-Host "Exchange Online PowerShell module is connected successfully"
     } else {
         Write-Host "Exchange Online PowerShell module is not available" -ForegroundColor yellow  
@@ -165,7 +147,6 @@ function SendAs {
     }
 }
 
-# Updated SendOnBehalfTo function
 function SendOnBehalfTo {
     Write-Host "Retrieving SendOnBehalfTo permissions for $UPN..." -ForegroundColor Yellow
     $MB_SendOnBehalfTo = Get-Mailbox -ResultSize Unlimited | Where-Object { $_.GrantSendOnBehalfTo -ne $null } | ForEach-Object {
@@ -208,7 +189,6 @@ function Remove-Delegation {
     $targetMailbox = $DelegationResult.Username
     $userToRemove = $UPN
 
-    # Check for FullAccess
     if ($DelegationResult.Access -like "*FullAccess*") {
         if ($global:RemoveAll -eq $true) {
             Remove-MailboxPermission -Identity "$targetMailbox" -User "$userToRemove" -AccessRights FullAccess -InheritanceType All -Confirm:$false
@@ -224,7 +204,6 @@ function Remove-Delegation {
         }
     }
 
-    # Check for SendAs
     if ($DelegationResult.Access -like "*SendAs*") {
         if ($global:RemoveAll -eq $true) {
             Remove-RecipientPermission -Identity "$targetMailbox" -Trustee "$userToRemove" -AccessRights SendAs -Confirm:$false
@@ -240,7 +219,6 @@ function Remove-Delegation {
         }
     }
 
-    # Check for SendOnBehalf
     if ($DelegationResult.Access -like "*SendOnBehalf*") {
         if ($global:RemoveAll -eq $true) {
             Set-Mailbox -Identity "$targetMailbox" -GrantSendOnBehalfTo @{Remove="$userToRemove"} -Confirm:$false
@@ -299,7 +277,6 @@ function Start-Search {
         }
     }
 
-    # Format and sort the results by Username
     $global:FormattedResults = $CombinedResults.GetEnumerator() | ForEach-Object {
         $MailboxInfo = Get-DelegatedMailboxInfo($_.Key)
         [PSCustomObject]@{
@@ -307,23 +284,19 @@ function Start-Search {
             'Username'     = $MailboxInfo['Username']
             'Access'       = $_.Value
         }
-    } | Sort-Object Username  # Sort the results by the Username
+    } | Sort-Object Username
 
     if ($global:FormattedResults.Count -eq 0) {
-       # Write-Host ""
     } else {
-        # Display the results
         $global:FormattedResults | Format-Table -AutoSize
     }
 }
 
-# Main logic loop
 Connect_Exo
 
 do {
     $UPN = Get-ValidUPN
 
-    # Validate the response for importing CSV
     do {
         $importCSV = Read-Host "Do you want to import permissions from CSV? (yes/no)"
         if ($importCSV -ne "yes" -and $importCSV -ne "no") {
@@ -376,7 +349,6 @@ do {
         } while ($response -ne "0")
     }
 
-    # Validate the response for checking another user
     do {
         $checkAnother = Read-Host "Do you want to check another user? (yes/no)"
         if ($checkAnother -ne "yes" -and $checkAnother -ne "no") {
@@ -386,6 +358,5 @@ do {
 
 } while ($checkAnother -eq "yes")
 
-# Disconnect session after user chooses not to check another account
 Disconnect-ExchangeOnline -Confirm:$false -InformationAction Ignore -ErrorAction SilentlyContinue
 Write-Host "Disconnected active ExchangeOnline session"
