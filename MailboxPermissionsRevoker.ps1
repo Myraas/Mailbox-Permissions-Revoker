@@ -26,7 +26,7 @@ $csvFiles = Get-ChildItem -Path $scriptDirectory -Filter *.csv
 
 # Detect the operating system
 if ($IsWindows) {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
 } else {
     # Write-Host ""
 }
