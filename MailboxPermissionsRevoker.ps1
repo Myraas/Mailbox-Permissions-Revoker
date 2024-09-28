@@ -1,16 +1,11 @@
 <#
 Name:           Mailbox Permissions Revoker
-Version:        2.0
-Last Updated:   2024-09-27
+Version:        2.1
+Last Updated:   2024-09-28
 
 Change Log:
-- Added functionality to manage multiple CSV files, renaming old files and selecting the latest for use.
-- Improved Exchange Online connection details by displaying the most common domain from mailboxes.
-- Updated 'SendOnBehalfTo' function for more accurate permission retrieval by using mailbox user principal name matching.
-- Added optional CSV import feature for permissions retrieval, allowing users to choose between tenant search or CSV import.
-- Enhanced permission removal options (full or partial) based on user selection.
-- Refined UPN validation and mailbox permission search workflow for better user experience and error handling.
-- Improved sorting in permission search results by mailbox username.
+- Added OS detection to handle Windows and macOS differences. On Windows, the script forces TLS 1.2 for secure connections.
+- Removed the break statement in CSV detection, allowing the script to continue running even if no CSV files are found.
 
 Run the AdminDroid "GetMailboxPermission.ps1" (version 3.0) script in the same directory as this script to cache mailbox permissions. You can find the script at the following link:
 https://github.com/admindroid-community/powershell-scripts/blob/master/Office%20365%20Mailbox%20Permissions%20Report/GetMailboxPermission.ps1
@@ -28,6 +23,14 @@ $global:RemoveAll = $false
 $scriptDirectory = $PSScriptRoot
 $csvFiles = Get-ChildItem -Path $scriptDirectory -Filter *.csv
 
+
+# Detect the operating system
+if ($IsWindows) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+} else {
+    # Write-Host ""
+}
+
 if ($csvFiles.Count -gt 1) {
     $sortedFiles = $csvFiles | Sort-Object LastWriteTime
     for ($i = 0; $i -lt $sortedFiles.Count - 1; $i++) {
@@ -41,8 +44,7 @@ if ($csvFiles.Count -gt 1) {
 } elseif ($csvFiles.Count -eq 1) {
     $latestCSV = $csvFiles[0].FullName
 } else {
-    Write-Host "No CSV files found in the script directory. Exiting."
-    Exit
+    # Write-Host ""
 }
 
 $csvPath = $latestCSV
