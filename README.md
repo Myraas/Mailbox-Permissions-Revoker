@@ -17,7 +17,7 @@ To cache mailbox permissions for faster processing, you can run the AdminDroid "
 You can find the AdminDroid script here:
 [GetMailboxPermission.ps1](https://github.com/admindroid-community/powershell-scripts/blob/master/Office%20365%20Mailbox%20Permissions%20Report/GetMailboxPermission.ps1)
 
-Note: This script is created and maintained by AdminDroid. Please refer to their repository for updates and support.
+Note: This script is created and maintained by AdminDroid. Please refer to their repository for updates and support. Special thanks to AdminDroid for providing a tool that complements this script’s functionality.
 
 
 ## Disclaimer
