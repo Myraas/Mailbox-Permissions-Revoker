@@ -1,4 +1,5 @@
 <#
+
 Name:           Mailbox Permissions Revoker
 Version:        2.1
 Last Updated:   2024-09-28
@@ -22,7 +23,6 @@ $global:RemoveAll = $false
 
 $scriptDirectory = $PSScriptRoot
 $csvFiles = Get-ChildItem -Path $scriptDirectory -Filter *.csv
-
 
 # Detect the operating system
 if ($IsWindows) {
