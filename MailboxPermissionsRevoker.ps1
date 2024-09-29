@@ -6,7 +6,7 @@ Last Updated:   2024-09-28
 
 Change Log:
 - Introduced a global variable $GlobalVerbose to control the verbosity of the script.
-- Write-Host Statements with Write-Verbose
+- Replaced unnecessary Write-Host Statements with Write-Verbose
 - Added the Import-CSVResults function that was missing from the previous version of the script.
 
 Run the AdminDroid "GetMailboxPermission.ps1" (version 3.0) script in the same directory as this script to cache mailbox permissions. You can find the script at the following link:
