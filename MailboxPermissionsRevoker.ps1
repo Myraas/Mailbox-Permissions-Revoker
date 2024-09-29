@@ -8,6 +8,7 @@ Change Log:
 - Introduced a global variable $GlobalVerbose to control the verbosity of the script.
 - Replaced unnecessary Write-Host Statements with Write-Verbose
 - Added the Import-CSVResults function that was missing from the previous version of the script.
+- Corrected "Import-Module ExchangeOnline" with "Import-Module ExchangeOnlineManagement"
 
 Run the AdminDroid "GetMailboxPermission.ps1" (version 3.0) script in the same directory as this script to cache mailbox permissions. You can find the script at the following link:
 https://github.com/admindroid-community/powershell-scripts/blob/master/Office%20365%20Mailbox%20Permissions%20Report/GetMailboxPermission.ps1
@@ -105,7 +106,7 @@ function Connect_Exo {
     $Module = Get-Module ExchangeOnlineManagement -ListAvailable
     if ($Module.count -ne 0) {
         Write-Host "Connecting to Exchange Online..."
-        Import-Module ExchangeOnline -ErrorAction SilentlyContinue -Force
+        Import-Module ExchangeOnlineManagement -ErrorAction SilentlyContinue -Force
         Connect-ExchangeOnline
         
         $mailboxes = Get-Mailbox -ResultSize 10
