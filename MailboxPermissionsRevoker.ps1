@@ -1,12 +1,13 @@
 <#
 
 Name:           Mailbox Permissions Revoker
-Version:        2.1
+Version:        2.2
 Last Updated:   2024-09-28
 
 Change Log:
-- Added OS detection to handle Windows and macOS differences. On Windows, the script forces TLS 1.2 for secure connections.
-- Removed the break statement in CSV detection, allowing the script to continue running even if no CSV files are found.
+- Introduced a global variable $GlobalVerbose to control the verbosity of the script.
+- Write-Host Statements with Write-Verbose
+- Added the Import-CSVResults function that was missing from the previous version of the script.
 
 Run the AdminDroid "GetMailboxPermission.ps1" (version 3.0) script in the same directory as this script to cache mailbox permissions. You can find the script at the following link:
 https://github.com/admindroid-community/powershell-scripts/blob/master/Office%20365%20Mailbox%20Permissions%20Report/GetMailboxPermission.ps1
@@ -19,16 +20,21 @@ Param
     [string]$UPN = $NULL
 )
 
-$global:RemoveAll = $false
+$GlobalVerbose = $false
 
+if ($GlobalVerbose) {
+    $VerbosePreference = 'Continue'
+} else {
+    $VerbosePreference = 'SilentlyContinue'
+    Clear-Host
+}
+
+$global:RemoveAll = $false
 $scriptDirectory = $PSScriptRoot
 $csvFiles = Get-ChildItem -Path $scriptDirectory -Filter *.csv
 
-# Detect the operating system
 if ($IsWindows) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-} else {
-    # Write-Host ""
 }
 
 if ($csvFiles.Count -gt 1) {
@@ -49,6 +55,52 @@ if ($csvFiles.Count -gt 1) {
 
 $csvPath = $latestCSV
 
+function Import-CSVResults {
+    $global:FormattedResults = @()
+
+    if (-not (Test-Path $csvPath)) {
+        Write-Host "CSV file not found at $csvPath. Exiting."
+        Exit
+    }
+
+    $csvData = Import-Csv $csvPath
+    $filteredResults = $csvData | Where-Object { $_.UserWithAccess -match $UPN }
+
+    $combinedResults = @{}
+
+    foreach ($entry in $filteredResults) {
+        $delegatedMailbox = $entry.UserPrincipalName
+        $displayName = $entry.DisplayName
+        $accessType = $entry.AccessType
+        $username = $entry.UserPrincipalName
+
+        if ($combinedResults.ContainsKey($delegatedMailbox)) {
+            if ($combinedResults[$delegatedMailbox]["Access"] -notlike "*{$accessType}*") {
+                $combinedResults[$delegatedMailbox]["Access"] += "{" + $accessType + "}"
+            }
+        } else {
+            $combinedResults[$delegatedMailbox] = @{
+                "DisplayName" = $displayName
+                "Username" = $username
+                "Access" = "{" + $accessType + "}"
+            }
+        }
+    }
+
+    $global:FormattedResults = $combinedResults.GetEnumerator() | ForEach-Object {
+        [PSCustomObject]@{
+            'Display Name' = $_.Value["DisplayName"]
+            'Username'     = $_.Value["Username"]
+            'Access'       = $_.Value["Access"]
+        }
+    } | Sort-Object Username
+
+    if ($global:FormattedResults.Count -eq 0) {   
+    } else {
+        $global:FormattedResults | Format-Table -AutoSize
+    }
+}
+
 function Connect_Exo {
     $Module = Get-Module ExchangeOnlineManagement -ListAvailable
     if ($Module.count -ne 0) {
@@ -65,7 +117,7 @@ function Connect_Exo {
             Write-Host ""
             Write-Host "Connected to Office 365 Tenant: $mostCommonDomain" -ForegroundColor Green
         } else {
-            Write-Host "No mailboxes found to determine the domain." -ForegroundColor Yellow
+            Write-Host "No mailboxes found to determine the domain." -ForegroundColor yellow
         }
         Write-Host "Exchange Online PowerShell module is connected successfully"
     } else {
@@ -122,35 +174,35 @@ function Get-ValidUPN {
 }
 
 function FullAccess {
-    Write-Host "Retrieving FullAccess permissions for $UPN..." -ForegroundColor Yellow
+    Write-Verbose "Retrieving FullAccess permissions for $UPN..."
     $MB_FullAccess = Get-Mailbox | Get-MailboxPermission -User $UPN -ErrorAction SilentlyContinue | Where-Object { $_.AccessRights -contains "FullAccess" } | Select-Object Identity
     if ($MB_FullAccess.count -ne 0) {
-        Write-Host "Found FullAccess permissions for $UPN" -ForegroundColor Green
+        Write-Verbose "Found FullAccess permissions for $UPN"
         return $MB_FullAccess.Identity | ForEach-Object {
             @{'Display Name' = $_; 'Access' = "FullAccess"}
         }
     } else {
-        Write-Host "No FullAccess permissions found for $UPN" -ForegroundColor Yellow
+        Write-Verbose "No FullAccess permissions found for $UPN"
         return @{'Display Name' = "-"; 'Access' = "FullAccess"}
     }
 }
 
 function SendAs {
-    Write-Host "Retrieving SendAs permissions for $UPN..." -ForegroundColor Yellow
+    Write-Verbose "Retrieving SendAs permissions for $UPN..."
     $MB_SendAs = Get-RecipientPermission -Trustee $UPN -ErrorAction SilentlyContinue | Where-Object { $_.AccessRights -contains "SendAs" } | Select-Object Identity
     if ($MB_SendAs.count -ne 0) {
-        Write-Host "Found SendAs permissions for $UPN" -ForegroundColor Green
+        Write-Verbose "Found SendAs permissions for $UPN"
         return $MB_SendAs.Identity | ForEach-Object {
             @{'Display Name' = $_; 'Access' = "SendAs"}
         }
     } else {
-        Write-Host "No SendAs permissions found for $UPN" -ForegroundColor Yellow
+        Write-Verbose "No SendAs permissions found for $UPN"
         return @{'Display Name' = "-"; 'Access' = "SendAs"}
     }
 }
 
 function SendOnBehalfTo {
-    Write-Host "Retrieving SendOnBehalfTo permissions for $UPN..." -ForegroundColor Yellow
+    Write-Verbose "Retrieving SendOnBehalfTo permissions for $UPN..."
     $MB_SendOnBehalfTo = Get-Mailbox -ResultSize Unlimited | Where-Object { $_.GrantSendOnBehalfTo -ne $null } | ForEach-Object {
         $mailbox = $_
         $delegates = $mailbox.GrantSendOnBehalfTo | ForEach-Object {
@@ -163,10 +215,10 @@ function SendOnBehalfTo {
     }
 
     if (-not $MB_SendOnBehalfTo) {
-        Write-Host "No SendOnBehalfTo permissions found for $UPN" -ForegroundColor Yellow
+        Write-Verbose "No SendOnBehalfTo permissions found for $UPN"
         return @{'Display Name' = "-"; 'Access' = "SendOnBehalf"}
     } else {
-        Write-Host "Found SendOnBehalfTo permissions for $UPN" -ForegroundColor Green
+        Write-Verbose "Found SendOnBehalfTo permissions for $UPN"
         return $MB_SendOnBehalfTo | ForEach-Object {
             @{'Display Name' = $_; 'Access' = "SendOnBehalf"}
         }
@@ -242,7 +294,7 @@ function Start-Search {
     $PermissionsFound = @()
 
     if (($UPN -ne "")) {
-        Write-Host "Searching for permissions across all mailboxes..." -ForegroundColor Yellow
+        Write-Verbose "Searching for permissions across all mailboxes..."
 
         $UserInfo = Get-Mailbox | Where-Object { $_.UserPrincipalName -eq "$UPN" } | Select-Object Identity
         $Identity = $UserInfo.Identity
